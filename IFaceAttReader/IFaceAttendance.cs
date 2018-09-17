@@ -14,10 +14,11 @@ namespace IFaceAttReader
         public int VerifyMethod { get; set; }
         public int WorkCode { get; set; }
         public string Time { get; set; }
+        public string deviceName { get; set; }
 
         public IFaceAttendance(){}
 
-        public IFaceAttendance(string EnrollNumber, int IsInValid, int AttState, int VerifyMethod, int WorkCode, string Time)
+        public IFaceAttendance(string EnrollNumber, int IsInValid, int AttState, int VerifyMethod, int WorkCode, string Time, string deviceName)
         {
             this.EnrollNumber = EnrollNumber;
             this.AttState = AttState;
@@ -25,6 +26,7 @@ namespace IFaceAttReader
             this.VerifyMethod = VerifyMethod;
             this.WorkCode = WorkCode;
             this.Time = Time;
+            this.deviceName = deviceName;
         }
     }
 }
