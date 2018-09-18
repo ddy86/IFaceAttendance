@@ -89,6 +89,7 @@ namespace IFaceAttReader
             });
             createComAndMessagePumpThread.SetApartmentState(ApartmentState.STA);
             createComAndMessagePumpThread.Name = iface_Ip+"_"+port;
+            createComAndMessagePumpThread.IsBackground = true;
             createComAndMessagePumpThread.Start();
 
             LogHelper.Log(LogLevel.Debug ,"Service Started");
