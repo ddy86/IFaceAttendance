@@ -40,6 +40,8 @@
             // IFaceAttReader
             // 
             this.IFaceAttReader.ServiceName = "IFaceAttReader";
+            this.IFaceAttReader.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
+            this.IFaceAttReader.AfterInstall += new System.Configuration.Install.InstallEventHandler(this.IFaceAttReader_AfterInstall);
             // 
             // ProjectInstaller
             // 

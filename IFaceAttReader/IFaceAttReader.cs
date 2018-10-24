@@ -127,7 +127,7 @@ namespace IFaceAttReader
         public int SaveAttData(IFaceAttendance attData)
         {
             #region   插入单条数据
-            string sql = @"insert into test.attendance_data 
+            string sql = @"insert into iface_attendance_record  
             (EnrollNumber, IsInValid, AttState, VerifyMethod, WorkCode, Time, deviceName) values 
             (@EnrollNumber, @IsInValid, @AttState, @VerifyMethod, @WorkCode, @Time, @deviceName)";
             var result = DapperDBContext.Execute(sql, attData); //直接传送list对象

@@ -15,5 +15,10 @@ namespace IFaceAttReader
         {
             InitializeComponent();
         }
+
+        private void IFaceAttReader_AfterInstall(object sender, InstallEventArgs e)
+        {
+
+        }
     }
 }
