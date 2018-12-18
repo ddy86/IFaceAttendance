@@ -38,22 +38,31 @@ namespace IFaceAttReader
 
             foreach (string device in devices)
             {
-                string[] ip_port = device.Split(':');
+                string[] ip_port_passwd = device.Split('@');
+                if (ip_port_passwd.Length != 2)
+                {
+                    LogHelper.Log(LogLevel.Debug, "device IP_port & commKey param set error! :" + device);
+                    continue;
+                }
+                string ip_port_str = ip_port_passwd[0];
+                string commKey = ip_port_passwd[1];
+                string[] ip_port = ip_port_str.Split(':');
                 if (ip_port.Length != 2)
                 {
                     LogHelper.Log(LogLevel.Debug, "device IP & port param set error!");
                     continue;
                 }
-                ConnectDevice(ip_port[0], int.Parse(ip_port[1]));
+                ConnectDevice(ip_port[0], int.Parse(ip_port[1]), int.Parse(commKey));
             }
         }
 
 
-        public void ConnectDevice(string iface_Ip, int port) { 
+        public void ConnectDevice(string iface_Ip, int port, int commKey) { 
             Thread createComAndMessagePumpThread = new Thread(() =>
             {
                 LogHelper.Log(LogLevel.Debug, "connectting to device:" + iface_Ip + ":" + port);
                 zkemkeeper.CZKEMClass axCZKEM1 = new zkemkeeper.CZKEMClass();
+                axCZKEM1.SetCommPassword(commKey);
                 ReConnect(axCZKEM1, iface_Ip, port);
 
                 System.Timers.Timer timer = new System.Timers.Timer();
