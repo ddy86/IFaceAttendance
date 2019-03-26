@@ -20,7 +20,10 @@ namespace IFaceAttReader
         private int iMachineNumber = 1;
 
         public static string IFaceDevices = ConfigurationManager.AppSettings.Get("IFaceDevices");
+        public static string IFaceCheckTime = ConfigurationManager.AppSettings.Get("IFaceCheckTime");
 
+        Dictionary<string, HashSet<string>> dictionary = new Dictionary<string, HashSet<string>>();
+        List<DateTime[]> checkTimes = new List<DateTime[]>();
         int idwErrorCode = 0;
 
         public IFaceAttReader()
@@ -34,6 +37,29 @@ namespace IFaceAttReader
             {
                 LogHelper.Log(LogLevel.Debug, "device IP & port param set error!");
                 return;
+            }
+
+            // handle times
+            string[] check_times = IFaceCheckTime.Split(';');
+            if (check_times.Length <= 0)
+            {
+                LogHelper.Log(LogLevel.Debug, "check times param set error!");
+                return;
+            }
+
+            foreach (string time in check_times)
+            {
+                string[] sub_time = time.Split('-');
+                if (sub_time.Length != 2)
+                {
+                    LogHelper.Log(LogLevel.Debug, "check time param set error: " + time);
+                    continue;
+                }
+                DateTime[] time_pair = {
+                    Convert.ToDateTime(sub_time[0]),
+                    Convert.ToDateTime(sub_time[1]),
+                };
+                checkTimes.Add(time_pair);
             }
 
             foreach (string device in devices)
@@ -53,33 +79,58 @@ namespace IFaceAttReader
                     continue;
                 }
                 ConnectDevice(ip_port[0], int.Parse(ip_port[1]), int.Parse(commKey));
+                
             }
         }
 
 
-        public void ConnectDevice(string iface_Ip, int port, int commKey) { 
+        public void ConnectDevice(string iface_Ip, int port, int commKey) {
+            string deviceName = iface_Ip + "_" + port;
+            HashSet<string> set = new HashSet<string>();
+            dictionary.Add(iface_Ip + "_" + port, set);
             Thread createComAndMessagePumpThread = new Thread(() =>
             {
-                LogHelper.Log(LogLevel.Debug, "connectting to device:" + iface_Ip + ":" + port);
+                int machineNumber = 1;
+                LogHelper.Log(LogLevel.Debug, "connectting to device:" + deviceName);
                 zkemkeeper.CZKEMClass axCZKEM1 = new zkemkeeper.CZKEMClass();
-                axCZKEM1.SetCommPassword(commKey);
-                ReConnect(axCZKEM1, iface_Ip, port);
-
+                if (commKey != 0)
+                {
+                    axCZKEM1.SetCommPassword(commKey);
+                }
                 System.Timers.Timer timer = new System.Timers.Timer();
+                connect(axCZKEM1, iface_Ip, port, 0);
                 timer.Elapsed += new System.Timers.ElapsedEventHandler((object sender, System.Timers.ElapsedEventArgs e) => 
                 {
-                    string IPAddr = "";
-                    if (axCZKEM1.GetDeviceIP(iMachineNumber, IPAddr))
+                    DateTime now = DateTime.Now;
+                    // clear dictionary
+                    if (now < Convert.ToDateTime("00:11"))
                     {
-                        LogHelper.Log(LogLevel.Debug, "device " + iface_Ip + ":" + port + " connect status is ok.");
+                        LogHelper.Log(LogLevel.Debug, "Clear dictionary now.");
+                        dictionary.Clear();
                     }
-                    else
+                    // compare time
+                    foreach (DateTime[] time_pair in checkTimes)
                     {
-                        axCZKEM1.GetLastError(ref idwErrorCode);
-                        axCZKEM1.OnAttTransactionEx -= new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
-                        LogHelper.Log(LogLevel.Debug, "Unable to connect the device,ErrorCode=" + idwErrorCode.ToString() + ", reConnecting...");
-                        ReConnect(axCZKEM1, iface_Ip, port);
-
+                        if (now >= time_pair[0] && now <= time_pair[1])
+                        {
+                            string IPAddr = "";
+                            int retry_times = 1;
+                            while (! axCZKEM1.GetDeviceIP(machineNumber, IPAddr))
+                            {
+                                axCZKEM1.GetLastError(ref idwErrorCode);
+                                LogHelper.Log(LogLevel.Debug, "Connecting to " + deviceName + " failed, ErrorCode=" + idwErrorCode.ToString() + ", reConnecting...");
+                                connect(axCZKEM1, iface_Ip, port, retry_times);
+                                retry_times++;
+                                Thread.Sleep(60000);
+                            }
+                            LogHelper.Log(LogLevel.Debug, "device " + deviceName + " connected status is ok.");
+                            readAttData(axCZKEM1, iface_Ip + "_" + port);
+                        }
+                        else{
+                            
+                            LogHelper.Log(LogLevel.Debug, "device " + deviceName + " time not in " + time_pair[0] + "--" + time_pair[1] + ", continued.");
+                            continue;
+                        }
                     }
                 });
                 timer.Interval = 600000;// 10 minutes
@@ -88,51 +139,78 @@ namespace IFaceAttReader
                 Application.Run();
             });
             createComAndMessagePumpThread.SetApartmentState(ApartmentState.STA);
-            createComAndMessagePumpThread.Name = iface_Ip+"_"+port;
+            createComAndMessagePumpThread.Name = deviceName;
             createComAndMessagePumpThread.IsBackground = true;
             createComAndMessagePumpThread.Start();
 
-            LogHelper.Log(LogLevel.Debug , iface_Ip + "_" + port + ": Thread Started.");
+            LogHelper.Log(LogLevel.Debug , deviceName + ": Thread Started.");
         }
 
 
-        private void ReConnect(zkemkeeper.CZKEMClass axCZKEM1,string iface_Ip, int port)
+        private void connect(zkemkeeper.CZKEMClass axCZKEM1,string iface_Ip, int port, int retry)
         {
             bool bIsConnected = axCZKEM1.Connect_Net(iface_Ip, port);
 
             if (bIsConnected == true){
-                iMachineNumber = 1;//In fact,when you are using the tcp/ip communication,this parameter will be ignored,that is any integer will all right.Here we use 1.
-                bool regEvent = axCZKEM1.RegEvent(iMachineNumber, 65535);//Here you can register the realtime events that you want to be triggered(the parameters 65535 means registering all)
-                LogHelper.Log(LogLevel.Debug, "Connect the device successed. iMachineNumber: " + iMachineNumber);
-                if (regEvent == true)
-                {
-                    LogHelper.Log(LogLevel.Debug, "regEvent value: " + regEvent);
-                    axCZKEM1.OnAttTransactionEx += new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
-                }
-                else
-                {
-                    LogHelper.Log(LogLevel.Debug, "regEvent failed, disconnecting device...");
-                    axCZKEM1.Disconnect();
-                }
+                
+                LogHelper.Log(LogLevel.Debug, "Connected " + iface_Ip + "_" + port + " successed by retrying " + retry + " times.");
+                
             }
             else
             {
                 axCZKEM1.GetLastError(ref idwErrorCode);
-                axCZKEM1.OnAttTransactionEx -= new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
-                LogHelper.Log(LogLevel.Debug, "Unable to connect the device,ErrorCode=" + idwErrorCode.ToString() + ", reConnect failed.");
+                
+                LogHelper.Log(LogLevel.Debug, "Unable to connect " + iface_Ip + "_" + port + " by retrying " + retry + " times. ErrorCode=" + idwErrorCode.ToString() + ", connect failed.");
             }
 
         }
 
-
-        private void axCZKEM1_OnAttTransactionEx(string sEnrollNumber, int iIsInValid, int iAttState, int iVerifyMethod, int iYear, int iMonth, int iDay, int iHour, int iMinute, int iSecond, int iWorkCode)
-        { 
-            string time = iYear.ToString() + "-" + iMonth.ToString() + "-" + iDay.ToString() + " " + iHour.ToString() + ":" + iMinute.ToString() + ":" + iSecond.ToString();
-            string deviceName = Thread.CurrentThread.Name;
-            LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName);
-            int dataSize = SaveAttData(new IFaceAttendance(sEnrollNumber, iIsInValid, iAttState , iVerifyMethod , iWorkCode ,time, deviceName));
+        private void readAttData(zkemkeeper.CZKEMClass axCZKEM1, string deviceName)
+        {
+            axCZKEM1.EnableDevice(iMachineNumber, false);//disable the device
+            LogHelper.Log(LogLevel.Debug, "Check attendence records for " + deviceName);
+            int count = 0;
+            int repeat = 0;
+            if (axCZKEM1.ReadGeneralLogData(iMachineNumber))//read all the attendance records to the memory
+            {
+                string sdwEnrollNumber = "";
+                int idwVerifyMode = 0;
+                int idwInOutMode = 0;
+                int idwYear = 0;
+                int idwMonth = 0;
+                int idwDay = 0;
+                int idwHour = 0;
+                int idwMinute = 0;
+                int idwSecond = 0;
+                int idwWorkcode = 0;
+                HashSet<string> set = dictionary[deviceName];
+                if (set is null)
+                {
+                    set = new HashSet<string>();
+                    dictionary.Add(deviceName, set);
+                }
+                while (axCZKEM1.SSR_GetGeneralLogData(iMachineNumber, out sdwEnrollNumber, out idwVerifyMode,
+                            out idwInOutMode, out idwYear, out idwMonth, out idwDay, out idwHour, out idwMinute, out idwSecond, ref idwWorkcode))//get records from the memory
+                {
+                    string time = idwYear.ToString() + "-" + idwMonth.ToString() + "-" + idwDay.ToString() + " " + idwHour.ToString() + ":" + idwMinute.ToString() + ":" + idwSecond.ToString();
+                    string record = sdwEnrollNumber + "@" + time;
+                    if (set.Contains(record))
+                    {
+                        repeat++;
+                        continue;
+                    }
+                    else
+                    {
+                        set.Add(record);
+                        count++;
+                        LogHelper.Log(LogLevel.Debug, "Teacher " + sdwEnrollNumber + " attendance @" + time + " by " + deviceName);
+                        SaveAttData(new IFaceAttendance(sdwEnrollNumber, 0, idwInOutMode, idwVerifyMode, idwWorkcode, time, deviceName));
+                    }  
+                }
+            }
+            LogHelper.Log(LogLevel.Debug, count + " records checked, " + repeat + " repeat for " + deviceName);
+            axCZKEM1.EnableDevice(iMachineNumber, true);//enable the device
         }
-
 
         public int SaveAttData(IFaceAttendance attData)
         {
