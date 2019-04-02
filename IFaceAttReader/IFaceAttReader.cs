@@ -218,12 +218,21 @@ namespace IFaceAttReader
             string sql = @"insert into iface_attendance_record  
             (EnrollNumber, IsInValid, AttState, VerifyMethod, WorkCode, Time, deviceName) values 
             (@EnrollNumber, @IsInValid, @AttState, @VerifyMethod, @WorkCode, @Time, @deviceName)";
+            try
+            {
+
             var result = DapperDBContext.Execute(sql, attData); //直接传送list对象
             if (result >= 1)
             {
-                LogHelper.Log(LogLevel.Debug, ": save att :" + JsonConvert.SerializeObject(attData));
+                LogHelper.Log(LogLevel.Debug, "Save att success:" + JsonConvert.SerializeObject(attData));
             }
             return result;
+            }
+            catch (Exception e)
+            {
+                LogHelper.Log(LogLevel.Fatal, "Save att failed:" + JsonConvert.SerializeObject(attData) + "with error:" +  e.Message);
+                return 0;
+            }
             #endregion
         }
 
