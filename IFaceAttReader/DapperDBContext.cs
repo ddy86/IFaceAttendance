@@ -27,6 +27,16 @@ namespace IFaceAttReader
             }
         }
 
+        public static List<IFaceAttendance> Query(string sql, object param = null)
+        {
+            using (var conn = ConnectionFactory.MySqlConnection())
+            {
+                var restult = conn.Query<IFaceAttendance>(sql, new { Time = param });
+                return restult.ToList();
+            }
+        }
+
+
         public static int Execute(CommandDefinition command, int databaseOption = 1)
         {
             using (var conn = ConnectionFactory.MySqlConnection())

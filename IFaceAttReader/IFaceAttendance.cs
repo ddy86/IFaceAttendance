@@ -13,12 +13,12 @@ namespace IFaceAttReader
         public int AttState { get; set; }
         public int VerifyMethod { get; set; }
         public int WorkCode { get; set; }
-        public string Time { get; set; }
+        public DateTime Time { get; set; }
         public string deviceName { get; set; }
 
         public IFaceAttendance(){}
 
-        public IFaceAttendance(string EnrollNumber, int IsInValid, int AttState, int VerifyMethod, int WorkCode, string Time, string deviceName)
+        public IFaceAttendance(string EnrollNumber, int IsInValid, int AttState, int VerifyMethod, int WorkCode, DateTime Time, string deviceName)
         {
             this.EnrollNumber = EnrollNumber;
             this.AttState = AttState;

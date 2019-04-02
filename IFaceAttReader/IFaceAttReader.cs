@@ -21,6 +21,7 @@ namespace IFaceAttReader
 
         public static string IFaceDevices = ConfigurationManager.AppSettings.Get("IFaceDevices");
         public static string IFaceCheckTime = ConfigurationManager.AppSettings.Get("IFaceCheckTime");
+        public static string IFaceCheckInterval = ConfigurationManager.AppSettings.Get("IFaceCheckInterval");
 
         Dictionary<string, HashSet<string>> dictionary = new Dictionary<string, HashSet<string>>();
         List<DateTime[]> checkTimes = new List<DateTime[]>();
@@ -62,6 +63,21 @@ namespace IFaceAttReader
                 checkTimes.Add(time_pair);
             }
 
+            // get today's reords
+            String today = DateTime.Now.ToString("yyyy-MM-dd");
+            List<IFaceAttendance> records = getTodayAttData(today);
+            foreach (IFaceAttendance att in records)
+            {
+                if (! dictionary.ContainsKey(att.deviceName))
+                {
+                    HashSet<string> newSet = new HashSet<string>();
+                    dictionary.Add(att.deviceName, newSet);
+                }
+                HashSet<string> set = dictionary[att.deviceName];
+                string record = att.EnrollNumber + "@" + att.Time.ToString("yyyy-MM-dd HH:mm:ss");
+                set.Add(record);
+                LogHelper.Log(LogLevel.Debug, "record in database: " + record);
+            }
             foreach (string device in devices)
             {
                 string[] ip_port_passwd = device.Split('@');
@@ -86,8 +102,11 @@ namespace IFaceAttReader
 
         public void ConnectDevice(string iface_Ip, int port, int commKey) {
             string deviceName = iface_Ip + "_" + port;
-            HashSet<string> set = new HashSet<string>();
-            dictionary.Add(iface_Ip + "_" + port, set);
+            if (! dictionary.ContainsKey(deviceName))
+            {
+                HashSet<string> set = new HashSet<string>();
+                dictionary.Add(deviceName, set);
+            }
             Thread createComAndMessagePumpThread = new Thread(() =>
             {
                 int machineNumber = 1;
@@ -133,7 +152,8 @@ namespace IFaceAttReader
                         }
                     }
                 });
-                timer.Interval = 600000;// 10 minutes
+
+                timer.Interval = int.Parse(IFaceCheckInterval);
                 timer.Enabled = true;
 
                 Application.Run();
@@ -184,15 +204,22 @@ namespace IFaceAttReader
                 int idwSecond = 0;
                 int idwWorkcode = 0;
                 HashSet<string> set = dictionary[deviceName];
-                if (set is null)
-                {
-                    set = new HashSet<string>();
-                    dictionary.Add(deviceName, set);
-                }
+                string today_str = DateTime.Now.ToString("yyyy-MM-dd") + " 00:00:00";
+                DateTime today = Convert.ToDateTime(today_str);
                 while (axCZKEM1.SSR_GetGeneralLogData(iMachineNumber, out sdwEnrollNumber, out idwVerifyMode,
                             out idwInOutMode, out idwYear, out idwMonth, out idwDay, out idwHour, out idwMinute, out idwSecond, ref idwWorkcode))//get records from the memory
                 {
-                    string time = idwYear.ToString() + "-" + idwMonth.ToString() + "-" + idwDay.ToString() + " " + idwHour.ToString() + ":" + idwMinute.ToString() + ":" + idwSecond.ToString();
+                    string time = idwYear.ToString() + "-" 
+                        + (idwMonth < 10 ? "0" : "") + idwMonth.ToString() + "-" 
+                        + (idwDay < 10 ? "0" : "") + idwDay.ToString() + " "
+                        + (idwHour < 10 ? "0" : "") + idwHour.ToString() + ":"
+                        + (idwMinute < 10 ? "0" : "") + idwMinute.ToString() + ":"
+                        + (idwSecond < 10 ? "0" : "") + idwSecond.ToString();
+                    DateTime recordTime = Convert.ToDateTime(time);
+                    if (recordTime < today)
+                    {
+                        continue;
+                    }
                     string record = sdwEnrollNumber + "@" + time;
                     if (set.Contains(record))
                     {
@@ -204,7 +231,7 @@ namespace IFaceAttReader
                         set.Add(record);
                         count++;
                         LogHelper.Log(LogLevel.Debug, "Teacher " + sdwEnrollNumber + " attendance @" + time + " by " + deviceName);
-                        SaveAttData(new IFaceAttendance(sdwEnrollNumber, 0, idwInOutMode, idwVerifyMode, idwWorkcode, time, deviceName));
+                        SaveAttData(new IFaceAttendance(sdwEnrollNumber, 0, idwInOutMode, idwVerifyMode, idwWorkcode, recordTime, deviceName));
                     }  
                 }
             }
@@ -232,6 +259,28 @@ namespace IFaceAttReader
             {
                 LogHelper.Log(LogLevel.Fatal, "Save att failed:" + JsonConvert.SerializeObject(attData) + "with error:" +  e.Message);
                 return 0;
+            }
+            #endregion
+        }
+
+        public List<IFaceAttendance> getTodayAttData(string time)
+        {
+            #region   插入单条数据
+            string sql = @"select * from iface_attendance_record where Time > @Time";
+            try
+            {
+
+                var result = DapperDBContext.Query(sql, time);
+                if (result.Count > 0)
+                {
+                    LogHelper.Log(LogLevel.Debug, "Get today's att success: " + result.Count);
+                }
+                return result;
+            }
+            catch (Exception e)
+            {
+                LogHelper.Log(LogLevel.Fatal, "Get att failed:" + "with error:" +  e.Message);
+                return new List<IFaceAttendance>();
             }
             #endregion
         }
