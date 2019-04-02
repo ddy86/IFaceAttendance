@@ -125,7 +125,10 @@ namespace IFaceAttReader
                     if (now < Convert.ToDateTime("00:11"))
                     {
                         LogHelper.Log(LogLevel.Debug, "Clear dictionary now.");
-                        dictionary.Clear();
+                        foreach (string key in dictionary.Keys)
+                        {
+                            dictionary[key].Clear();
+                        }
                     }
                     // compare time
                     foreach (DateTime[] time_pair in checkTimes)
