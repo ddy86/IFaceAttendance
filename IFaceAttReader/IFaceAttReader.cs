@@ -24,7 +24,7 @@ namespace IFaceAttReader
         public static string IFaceCheckInterval = ConfigurationManager.AppSettings.Get("IFaceCheckInterval");
 
         Dictionary<string, HashSet<string>> dictionary = new Dictionary<string, HashSet<string>>();
-        List<DateTime[]> checkTimes = new List<DateTime[]>();
+        List<string[]> checkTimes = new List<string[]>();
         int idwErrorCode = 0;
 
         public IFaceAttReader()
@@ -56,10 +56,7 @@ namespace IFaceAttReader
                     LogHelper.Log(LogLevel.Debug, "check time param set error: " + time);
                     continue;
                 }
-                DateTime[] time_pair = {
-                    Convert.ToDateTime(sub_time[0]),
-                    Convert.ToDateTime(sub_time[1]),
-                };
+                string[] time_pair = {sub_time[0] ,sub_time[1]};
                 checkTimes.Add(time_pair);
             }
 
@@ -122,7 +119,7 @@ namespace IFaceAttReader
                 {
                     DateTime now = DateTime.Now;
                     // clear dictionary
-                    if (now < Convert.ToDateTime("00:11"))
+                    if (now < Convert.ToDateTime("00:30"))
                     {
                         LogHelper.Log(LogLevel.Debug, "Clear dictionary now.");
                         foreach (string key in dictionary.Keys)
@@ -131,9 +128,9 @@ namespace IFaceAttReader
                         }
                     }
                     // compare time
-                    foreach (DateTime[] time_pair in checkTimes)
+                    foreach (string[] time_pair in checkTimes)
                     {
-                        if (now >= time_pair[0] && now <= time_pair[1])
+                        if (now >= Convert.ToDateTime(time_pair[0]) && now <= Convert.ToDateTime(time_pair[1]))
                         {
                             string IPAddr = "";
                             int retry_times = 1;
