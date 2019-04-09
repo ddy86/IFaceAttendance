@@ -137,6 +137,11 @@ namespace IFaceAttReader
                             while (! axCZKEM1.GetDeviceIP(machineNumber, IPAddr))
                             {
                                 axCZKEM1.GetLastError(ref idwErrorCode);
+                                if (retry_times > 10)
+                                {
+                                    LogHelper.Log(LogLevel.Debug, "Connecting to " + deviceName + " failed " + retry_times + " times, ErrorCode=" + idwErrorCode.ToString() + ", stop connecting.");
+                                    return;
+                                }
                                 LogHelper.Log(LogLevel.Debug, "Connecting to " + deviceName + " failed, ErrorCode=" + idwErrorCode.ToString() + ", reConnecting...");
                                 connect(axCZKEM1, iface_Ip, port, retry_times);
                                 retry_times++;
