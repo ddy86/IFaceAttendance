@@ -114,6 +114,8 @@ namespace IFaceAttReader
                     axCZKEM1.SetCommPassword(commKey);
                 }
                 System.Timers.Timer timer = new System.Timers.Timer();
+                timer.Interval = int.Parse(IFaceCheckInterval);
+                timer.Enabled = true;
                 connect(axCZKEM1, iface_Ip, port, 0);
                 timer.Elapsed += new System.Timers.ElapsedEventHandler((object sender, System.Timers.ElapsedEventArgs e) => 
                 {
@@ -137,15 +139,15 @@ namespace IFaceAttReader
                             while (! axCZKEM1.GetDeviceIP(machineNumber, IPAddr))
                             {
                                 axCZKEM1.GetLastError(ref idwErrorCode);
-                                if (retry_times > 10)
+                                if (retry_times > 2) // only retry 2 times
                                 {
+                                    retry_times--;
                                     LogHelper.Log(LogLevel.Debug, "Connecting to " + deviceName + " failed " + retry_times + " times, ErrorCode=" + idwErrorCode.ToString() + ", stop connecting.");
                                     return;
                                 }
-                                LogHelper.Log(LogLevel.Debug, "Connecting to " + deviceName + " failed, ErrorCode=" + idwErrorCode.ToString() + ", reConnecting...");
+                                LogHelper.Log(LogLevel.Debug, "Connecting to " + deviceName + " failed, ErrorCode=" + idwErrorCode.ToString() + ", reConnecting: " + retry_times);
                                 connect(axCZKEM1, iface_Ip, port, retry_times);
                                 retry_times++;
-                                Thread.Sleep(60000);
                             }
                             LogHelper.Log(LogLevel.Debug, "device " + deviceName + " connected status is ok.");
                             readAttData(axCZKEM1, iface_Ip + "_" + port);
@@ -157,10 +159,6 @@ namespace IFaceAttReader
                         }
                     }
                 });
-
-                timer.Interval = int.Parse(IFaceCheckInterval);
-                timer.Enabled = true;
-
                 Application.Run();
             });
             createComAndMessagePumpThread.SetApartmentState(ApartmentState.STA);
