@@ -73,7 +73,7 @@ namespace IFaceAttReader
                 HashSet<string> set = dictionary[att.deviceName];
                 string record = att.EnrollNumber + "@" + att.Time.ToString("yyyy-MM-dd HH:mm:ss");
                 set.Add(record);
-                LogHelper.Log(LogLevel.Debug, "record in database: " + record);
+                LogHelper.Log(LogLevel.Debug, "record in database: " + record + "by " + att.deviceName);
             }
             foreach (string device in devices)
             {
