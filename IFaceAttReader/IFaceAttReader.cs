@@ -190,7 +190,7 @@ namespace IFaceAttReader
 
         private void readAttData(zkemkeeper.CZKEMClass axCZKEM1, string deviceName)
         {
-            axCZKEM1.EnableDevice(iMachineNumber, false);//disable the device
+            //axCZKEM1.EnableDevice(iMachineNumber, false);//disable the device
             LogHelper.Log(LogLevel.Debug, "Check attendence records for " + deviceName);
             int count = 0;
             int repeat = 0;
@@ -239,7 +239,7 @@ namespace IFaceAttReader
                 }
             }
             LogHelper.Log(LogLevel.Debug, count + " records checked, " + repeat + " repeat for " + deviceName);
-            axCZKEM1.EnableDevice(iMachineNumber, true);//enable the device
+            //axCZKEM1.EnableDevice(iMachineNumber, true);//enable the device
         }
 
         public int SaveAttData(IFaceAttendance attData)
