@@ -21,8 +21,6 @@ namespace IFaceAttReader
         List<string[]> checkTimes = new List<string[]>();
         int idwErrorCode = 0;
 
-        bool clear_memory_data_flag = false;
-
         public IFaceAttReader()
         {
             InitializeComponent();
@@ -99,6 +97,7 @@ namespace IFaceAttReader
                 set.Add(record);
                 LogHelper.Log(LogLevel.Debug, "record in database: " + record + "by " + att.deviceName);
             }
+            LogHelper.Log(LogLevel.Debug, "records in database 3days total : " +  records.Count);
         }
 
         public void ConnectDevice(string iface_Ip, int port, int commKey) {
@@ -124,16 +123,6 @@ namespace IFaceAttReader
                 timer.Elapsed += new System.Timers.ElapsedEventHandler((object sender, System.Timers.ElapsedEventArgs e) => 
                 {
                     DateTime now = DateTime.Now;
-                    // clear dictionary
-                    if (now < Convert.ToDateTime("00:30"))
-                    {
-                        LogHelper.Log(LogLevel.Debug, "Clear dictionary now.");
-                        foreach (string key in dictionary.Keys)
-                        {
-                            dictionary[key].Clear();
-                        }
-
-                    }
                     // compare time
                     foreach (string[] time_pair in checkTimes)
                     {
@@ -178,19 +167,48 @@ namespace IFaceAttReader
         private void connect(zkemkeeper.CZKEMClass axCZKEM1,string iface_Ip, int port, int retry)
         {
             bool bIsConnected = axCZKEM1.Connect_Net(iface_Ip, port);
-
+            string deviceName = Thread.CurrentThread.Name;
             if (bIsConnected == true){
-                
-                LogHelper.Log(LogLevel.Debug, "Connected " + iface_Ip + "_" + port + " successed by retrying " + retry + " times.");
-                
+                LogHelper.Log(LogLevel.Debug, "Connected " + deviceName + " successed by retrying " + retry + " times.");
+                iMachineNumber = 1;//In fact,when you are using the tcp/ip communication,this parameter will be ignored,that is any integer will all right.Here we use 1.
+                bool regEvent = axCZKEM1.RegEvent(iMachineNumber, 65535);//Here you can register the realtime events that you want to be triggered(the parameters 65535 means registering all)
+                if (regEvent == true)
+                {
+                    LogHelper.Log(LogLevel.Debug, deviceName +  "regEvent value: " + regEvent);
+                    axCZKEM1.OnAttTransactionEx += new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
+                }
+                else
+                {
+                    LogHelper.Log(LogLevel.Debug, deviceName + " regEvent failed, disconnecting device...");
+                    axCZKEM1.Disconnect();
+                }
             }
             else
             {
                 axCZKEM1.GetLastError(ref idwErrorCode);
-                
+                axCZKEM1.OnAttTransactionEx -= new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
                 LogHelper.Log(LogLevel.Debug, "Unable to connect " + iface_Ip + "_" + port + " by retrying " + retry + " times. ErrorCode=" + idwErrorCode.ToString() + ", connect failed.");
             }
 
+        }
+
+        private void axCZKEM1_OnAttTransactionEx(string sEnrollNumber, int iIsInValid, int iAttState, int iVerifyMethod, int iYear, int iMonth, int iDay, int iHour, int iMinute, int iSecond, int iWorkCode)
+        { 
+            string time = iYear.ToString() + "-" 
+                        + (iMonth < 10 ? "0" : "") + iMonth.ToString() + "-" 
+                        + (iDay < 10 ? "0" : "") + iDay.ToString() + " "
+                        + (iHour < 10 ? "0" : "") + iHour.ToString() + ":"
+                        + (iMinute < 10 ? "0" : "") + iMinute.ToString() + ":"
+                        + (iSecond < 10 ? "0" : "") + iSecond.ToString();
+            string deviceName = Thread.CurrentThread.Name;
+            HashSet<string> set = dictionary[deviceName];
+            LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName);
+            int dataSize = SaveAttData(new IFaceAttendance(sEnrollNumber, iIsInValid, iAttState , iVerifyMethod , iWorkCode ,time, deviceName));
+            if(dataSize > 0){
+                set.Add(sEnrollNumber + "@" + time);
+            }else{
+                LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName);
+            }
         }
 
         private void readAttData(zkemkeeper.CZKEMClass axCZKEM1, string deviceName)
@@ -199,6 +217,7 @@ namespace IFaceAttReader
             LogHelper.Log(LogLevel.Debug, "Check attendence records for " + deviceName);
             int count = 0;
             int repeat = 0;
+            int total = 0;
             if (axCZKEM1.ReadGeneralLogData(iMachineNumber))//read all the attendance records to the memory
             {
                 string sdwEnrollNumber = "";
@@ -212,11 +231,12 @@ namespace IFaceAttReader
                 int idwSecond = 0;
                 int idwWorkcode = 0;
                 HashSet<string> set = dictionary[deviceName];
-                string today_str = DateTime.Now.ToString("yyyy-MM-dd") + " 00:00:00";
-                DateTime today = Convert.ToDateTime(today_str);
+                string time_3days_ago_str = DateTime.Now.AddDays(-3).ToString("yyyy-MM-dd") + " 00:00:00";
+                DateTime time_3days_ago = Convert.ToDateTime(time_3days_ago_str);
                 while (axCZKEM1.SSR_GetGeneralLogData(iMachineNumber, out sdwEnrollNumber, out idwVerifyMode,
                             out idwInOutMode, out idwYear, out idwMonth, out idwDay, out idwHour, out idwMinute, out idwSecond, ref idwWorkcode))//get records from the memory
                 {
+                    total++;
                     string time = idwYear.ToString() + "-" 
                         + (idwMonth < 10 ? "0" : "") + idwMonth.ToString() + "-" 
                         + (idwDay < 10 ? "0" : "") + idwDay.ToString() + " "
@@ -224,11 +244,14 @@ namespace IFaceAttReader
                         + (idwMinute < 10 ? "0" : "") + idwMinute.ToString() + ":"
                         + (idwSecond < 10 ? "0" : "") + idwSecond.ToString();
                     DateTime recordTime = Convert.ToDateTime(time);
-                    if (recordTime < today)
+                    string record = sdwEnrollNumber + "@" + time;
+                    if (recordTime < time_3days_ago)
                     {
+                        if(set.Contains(record)){
+                            set.Remove(reords);
+                        }
                         continue;
                     }
-                    string record = sdwEnrollNumber + "@" + time;
                     if (set.Contains(record))
                     {
                         repeat++;
@@ -243,7 +266,7 @@ namespace IFaceAttReader
                     }  
                 }
             }
-            LogHelper.Log(LogLevel.Debug, count + " records checked, " + repeat + " repeat for " + deviceName);
+            LogHelper.Log(LogLevel.Debug, count + " records checked, " + repeat + " repeat, total " + total + " for " + deviceName);
             //axCZKEM1.EnableDevice(iMachineNumber, true);//enable the device
         }
 
@@ -256,7 +279,7 @@ namespace IFaceAttReader
             try
             {
 
-            var result = DapperDBContext.Execute(sql, attData); //直接传送list对象
+            var result = DapperDBContext.Execute(sql, attData);
             if (result >= 1)
             {
                 LogHelper.Log(LogLevel.Debug, "Save att success:" + JsonConvert.SerializeObject(attData));
