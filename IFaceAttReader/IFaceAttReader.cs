@@ -1,14 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Configuration;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
 using System.ServiceProcess;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Windows.Forms;
 
@@ -26,6 +20,8 @@ namespace IFaceAttReader
         Dictionary<string, HashSet<string>> dictionary = new Dictionary<string, HashSet<string>>();
         List<string[]> checkTimes = new List<string[]>();
         int idwErrorCode = 0;
+
+        bool clear_memory_data_flag = false;
 
         public IFaceAttReader()
         {
@@ -60,21 +56,7 @@ namespace IFaceAttReader
                 checkTimes.Add(time_pair);
             }
 
-            // get today's reords
-            String today = DateTime.Now.ToString("yyyy-MM-dd");
-            List<IFaceAttendance> records = getTodayAttData(today);
-            foreach (IFaceAttendance att in records)
-            {
-                if (! dictionary.ContainsKey(att.deviceName))
-                {
-                    HashSet<string> newSet = new HashSet<string>();
-                    dictionary.Add(att.deviceName, newSet);
-                }
-                HashSet<string> set = dictionary[att.deviceName];
-                string record = att.EnrollNumber + "@" + att.Time.ToString("yyyy-MM-dd HH:mm:ss");
-                set.Add(record);
-                LogHelper.Log(LogLevel.Debug, "record in database: " + record + "by " + att.deviceName);
-            }
+            
             foreach (string device in devices)
             {
                 string[] ip_port_passwd = device.Split('@');
@@ -88,14 +70,36 @@ namespace IFaceAttReader
                 string[] ip_port = ip_port_str.Split(':');
                 if (ip_port.Length != 2)
                 {
-                    LogHelper.Log(LogLevel.Debug, "device IP & port param set error!");
+                    LogHelper.Log(LogLevel.Debug, "device IP & port param set error! :" + ip_port_str);
                     continue;
                 }
                 ConnectDevice(ip_port[0], int.Parse(ip_port[1]), int.Parse(commKey));
                 
             }
+
+            queryAttRecords_3_days();
         }
 
+        public void queryAttRecords_3_days()
+        {
+            // get 3 day's reords
+            DateTime time_3_days_ago = DateTime.Now.AddDays(-3);
+            String time_3_days_ago_str = time_3_days_ago.ToString("yyyy-MM-dd");
+
+            List<IFaceAttendance> records = gueryLatestAttData(time_3_days_ago_str);
+            foreach (IFaceAttendance att in records)
+            {
+                if (!dictionary.ContainsKey(att.deviceName))
+                {
+                    HashSet<string> newSet = new HashSet<string>();
+                    dictionary.Add(att.deviceName, newSet);
+                }
+                HashSet<string> set = dictionary[att.deviceName];
+                string record = att.EnrollNumber + "@" + att.Time.ToString("yyyy-MM-dd HH:mm:ss");
+                set.Add(record);
+                LogHelper.Log(LogLevel.Debug, "record in database: " + record + "by " + att.deviceName);
+            }
+        }
 
         public void ConnectDevice(string iface_Ip, int port, int commKey) {
             string deviceName = iface_Ip + "_" + port;
@@ -128,6 +132,7 @@ namespace IFaceAttReader
                         {
                             dictionary[key].Clear();
                         }
+
                     }
                     // compare time
                     foreach (string[] time_pair in checkTimes)
@@ -266,9 +271,9 @@ namespace IFaceAttReader
             #endregion
         }
 
-        public List<IFaceAttendance> getTodayAttData(string time)
+        public List<IFaceAttendance> gueryLatestAttData(string time)
         {
-            #region   插入单条数据
+            #region 
             string sql = @"select * from iface_attendance_record where Time > @Time";
             try
             {
