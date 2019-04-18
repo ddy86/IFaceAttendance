@@ -203,7 +203,8 @@ namespace IFaceAttReader
             string deviceName = Thread.CurrentThread.Name;
             HashSet<string> set = dictionary[deviceName];
             LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName);
-            int dataSize = SaveAttData(new IFaceAttendance(sEnrollNumber, iIsInValid, iAttState , iVerifyMethod , iWorkCode ,time, deviceName));
+            DateTime recordTime = Convert.ToDateTime(time);
+            int dataSize = SaveAttData(new IFaceAttendance(sEnrollNumber, iIsInValid, iAttState , iVerifyMethod , iWorkCode ,recordTime, deviceName));
             if(dataSize > 0){
                 set.Add(sEnrollNumber + "@" + time);
             }else{
@@ -248,7 +249,7 @@ namespace IFaceAttReader
                     if (recordTime < time_3days_ago)
                     {
                         if(set.Contains(record)){
-                            set.Remove(reords);
+                            set.Remove(record);
                         }
                         continue;
                     }
