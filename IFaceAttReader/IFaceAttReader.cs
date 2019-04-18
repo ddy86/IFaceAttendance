@@ -174,7 +174,7 @@ namespace IFaceAttReader
                 bool regEvent = axCZKEM1.RegEvent(iMachineNumber, 65535);//Here you can register the realtime events that you want to be triggered(the parameters 65535 means registering all)
                 if (regEvent == true)
                 {
-                    LogHelper.Log(LogLevel.Debug, deviceName +  "regEvent value: " + regEvent);
+                    LogHelper.Log(LogLevel.Debug, deviceName +  " regEvent value: " + regEvent);
                     axCZKEM1.OnAttTransactionEx += new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
                 }
                 else
@@ -202,13 +202,14 @@ namespace IFaceAttReader
                         + (iSecond < 10 ? "0" : "") + iSecond.ToString();
             string deviceName = Thread.CurrentThread.Name;
             HashSet<string> set = dictionary[deviceName];
-            LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName);
+            LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName + " event.");
             DateTime recordTime = Convert.ToDateTime(time);
             int dataSize = SaveAttData(new IFaceAttendance(sEnrollNumber, iIsInValid, iAttState , iVerifyMethod , iWorkCode ,recordTime, deviceName));
             if(dataSize > 0){
                 set.Add(sEnrollNumber + "@" + time);
+                LogHelper.Log(LogLevel.Debug, sEnrollNumber + "@" + time + " by " + deviceName + "add to set, save size: " + dataSize);
             }else{
-                LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName);
+                LogHelper.Log(LogLevel.Debug, sEnrollNumber + "@" + time + " by " + deviceName + "not add to set, save size: " + dataSize);
             }
         }
 
@@ -262,7 +263,7 @@ namespace IFaceAttReader
                     {
                         set.Add(record);
                         count++;
-                        LogHelper.Log(LogLevel.Debug, "Teacher " + sdwEnrollNumber + " attendance @" + time + " by " + deviceName);
+                        LogHelper.Log(LogLevel.Debug, "Teacher " + sdwEnrollNumber + " attendance @" + time + " by " + deviceName + " check.");
                         SaveAttData(new IFaceAttendance(sdwEnrollNumber, 0, idwInOutMode, idwVerifyMode, idwWorkcode, recordTime, deviceName));
                     }  
                 }
