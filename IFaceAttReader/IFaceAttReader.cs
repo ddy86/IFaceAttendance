@@ -207,9 +207,9 @@ namespace IFaceAttReader
             int dataSize = SaveAttData(new IFaceAttendance(sEnrollNumber, iIsInValid, iAttState , iVerifyMethod , iWorkCode ,recordTime, deviceName));
             if(dataSize > 0){
                 set.Add(sEnrollNumber + "@" + time);
-                LogHelper.Log(LogLevel.Debug, sEnrollNumber + "@" + time + " by " + deviceName + "add to set, save size: " + dataSize);
+                LogHelper.Log(LogLevel.Debug, sEnrollNumber + "@" + time + " by " + deviceName + " add to set, save size: " + dataSize);
             }else{
-                LogHelper.Log(LogLevel.Debug, sEnrollNumber + "@" + time + " by " + deviceName + "not add to set, save size: " + dataSize);
+                LogHelper.Log(LogLevel.Debug, sEnrollNumber + "@" + time + " by " + deviceName + " not add to set, save size: " + dataSize);
             }
         }
 
