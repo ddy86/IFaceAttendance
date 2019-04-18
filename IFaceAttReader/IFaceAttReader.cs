@@ -54,6 +54,7 @@ namespace IFaceAttReader
                 checkTimes.Add(time_pair);
             }
 
+            queryAttRecords_3_days();
             
             foreach (string device in devices)
             {
@@ -75,7 +76,6 @@ namespace IFaceAttReader
                 
             }
 
-            queryAttRecords_3_days();
         }
 
         public void queryAttRecords_3_days()
@@ -202,8 +202,13 @@ namespace IFaceAttReader
                         + (iSecond < 10 ? "0" : "") + iSecond.ToString();
             string deviceName = Thread.CurrentThread.Name;
             HashSet<string> set = dictionary[deviceName];
-            LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName + " event.");
+            LogHelper.Log(LogLevel.Debug, "Teacher " + sEnrollNumber + " attendance @" + time + " by " + deviceName + " from event.");
             DateTime recordTime = Convert.ToDateTime(time);
+            if (set.Contains(sEnrollNumber + "@" + time))
+            {
+                LogHelper.Log(LogLevel.Debug, sEnrollNumber + "@" + time + " by " + deviceName + " repeat not to save.");
+                return;
+            }
             int dataSize = SaveAttData(new IFaceAttendance(sEnrollNumber, iIsInValid, iAttState , iVerifyMethod , iWorkCode ,recordTime, deviceName));
             if(dataSize > 0){
                 set.Add(sEnrollNumber + "@" + time);
@@ -263,7 +268,7 @@ namespace IFaceAttReader
                     {
                         set.Add(record);
                         count++;
-                        LogHelper.Log(LogLevel.Debug, "Teacher " + sdwEnrollNumber + " attendance @" + time + " by " + deviceName + " check.");
+                        LogHelper.Log(LogLevel.Debug, "Teacher " + sdwEnrollNumber + " attendance @" + time + " by " + deviceName + " from check.");
                         SaveAttData(new IFaceAttendance(sdwEnrollNumber, 0, idwInOutMode, idwVerifyMode, idwWorkcode, recordTime, deviceName));
                     }  
                 }
