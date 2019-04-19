@@ -225,7 +225,8 @@ namespace IFaceAttReader
             int count = 0;
             int repeat = 0;
             int total = 0;
-            long start_time = DateTime.Now.Ticks / 10000;            if (axCZKEM1.ReadGeneralLogData(iMachineNumber))//read all the attendance records to the memory
+            long start_time = DateTime.Now.Ticks / 10000;
+            if (axCZKEM1.ReadGeneralLogData(iMachineNumber))//read all the attendance records to the memory
             {
                 long end_time = DateTime.Now.Ticks / 10000;
                 LogHelper.Log(LogLevel.Debug, "read attendence records for " + deviceName + " cost time: " + (end_time - start_time));
