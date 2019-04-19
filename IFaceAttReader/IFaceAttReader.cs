@@ -167,7 +167,7 @@ namespace IFaceAttReader
         private void connect(zkemkeeper.CZKEMClass axCZKEM1,string iface_Ip, int port, int retry)
         {
             bool bIsConnected = axCZKEM1.Connect_Net(iface_Ip, port);
-            string deviceName = Thread.CurrentThread.Name;
+            string deviceName = iface_Ip + "_" + port;
             if (bIsConnected == true){
                 LogHelper.Log(LogLevel.Debug, "Connected " + deviceName + " successed by retrying " + retry + " times.");
                 iMachineNumber = 1;//In fact,when you are using the tcp/ip communication,this parameter will be ignored,that is any integer will all right.Here we use 1.
@@ -187,7 +187,7 @@ namespace IFaceAttReader
             {
                 axCZKEM1.GetLastError(ref idwErrorCode);
                 axCZKEM1.OnAttTransactionEx -= new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
-                LogHelper.Log(LogLevel.Debug, "Unable to connect " + iface_Ip + "_" + port + " by retrying " + retry + " times. ErrorCode=" + idwErrorCode.ToString() + ", connect failed.");
+                LogHelper.Log(LogLevel.Debug, "Unable to connect " + deviceName + " by retrying " + retry + " times. ErrorCode=" + idwErrorCode.ToString() + ", connect failed.");
             }
 
         }
@@ -221,12 +221,14 @@ namespace IFaceAttReader
         private void readAttData(zkemkeeper.CZKEMClass axCZKEM1, string deviceName)
         {
             //axCZKEM1.EnableDevice(iMachineNumber, false);//disable the device
-            LogHelper.Log(LogLevel.Debug, "Check attendence records for " + deviceName);
+            LogHelper.Log(LogLevel.Debug, "begin to check attendence records for " + deviceName);
             int count = 0;
             int repeat = 0;
             int total = 0;
-            if (axCZKEM1.ReadGeneralLogData(iMachineNumber))//read all the attendance records to the memory
+            long start_time = DateTime.Now.Ticks / 10000;            if (axCZKEM1.ReadGeneralLogData(iMachineNumber))//read all the attendance records to the memory
             {
+                long end_time = DateTime.Now.Ticks / 10000;
+                LogHelper.Log(LogLevel.Debug, "read attendence records for " + deviceName + " cost time: " + (end_time - start_time));
                 string sdwEnrollNumber = "";
                 int idwVerifyMode = 0;
                 int idwInOutMode = 0;
@@ -240,6 +242,7 @@ namespace IFaceAttReader
                 HashSet<string> set = dictionary[deviceName];
                 string time_3days_ago_str = DateTime.Now.AddDays(-3).ToString("yyyy-MM-dd") + " 00:00:00";
                 DateTime time_3days_ago = Convert.ToDateTime(time_3days_ago_str);
+
                 while (axCZKEM1.SSR_GetGeneralLogData(iMachineNumber, out sdwEnrollNumber, out idwVerifyMode,
                             out idwInOutMode, out idwYear, out idwMonth, out idwDay, out idwHour, out idwMinute, out idwSecond, ref idwWorkcode))//get records from the memory
                 {
@@ -272,8 +275,13 @@ namespace IFaceAttReader
                         SaveAttData(new IFaceAttendance(sdwEnrollNumber, 0, idwInOutMode, idwVerifyMode, idwWorkcode, recordTime, deviceName));
                     }  
                 }
+                LogHelper.Log(LogLevel.Debug, count + " records checked, " + repeat + " repeat, total " + total + " for " + deviceName);
             }
-            LogHelper.Log(LogLevel.Debug, count + " records checked, " + repeat + " repeat, total " + total + " for " + deviceName);
+            else
+            {
+                long end_time = DateTime.Now.Ticks / 10000;
+                LogHelper.Log(LogLevel.Debug, "failed to checke records from " + deviceName + " cost time: " + (end_time - start_time));
+            }
             //axCZKEM1.EnableDevice(iMachineNumber, true);//enable the device
         }
 
