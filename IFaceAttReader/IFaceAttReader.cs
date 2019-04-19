@@ -116,10 +116,12 @@ namespace IFaceAttReader
                 {
                     axCZKEM1.SetCommPassword(commKey);
                 }
-                System.Timers.Timer timer = new System.Timers.Timer();
-                timer.Interval = int.Parse(IFaceCheckInterval);
-                timer.Enabled = true;
                 connect(axCZKEM1, iface_Ip, port, 0);
+                System.Timers.Timer timer = new System.Timers.Timer
+                {
+                    Interval = int.Parse(IFaceCheckInterval),
+                    Enabled = true
+                };
                 timer.Elapsed += new System.Timers.ElapsedEventHandler((object sender, System.Timers.ElapsedEventArgs e) => 
                 {
                     DateTime now = DateTime.Now;
