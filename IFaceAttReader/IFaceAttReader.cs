@@ -279,6 +279,12 @@ namespace IFaceAttReader
                     }  
                 }
                 LogHelper.Log(LogLevel.Debug, count + " records checked, " + repeat + " repeat, total " + total + " for " + deviceName);
+                if (total == 0)
+                {
+                    axCZKEM1.OnAttTransactionEx -= new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
+                    axCZKEM1.Disconnect();
+                    LogHelper.Log(LogLevel.Debug, "total 0 records checked for " + deviceName + ", disconnect the device and retry.");
+                }
             }
             else
             {
