@@ -289,7 +289,9 @@ namespace IFaceAttReader
             else
             {
                 long end_time = DateTime.Now.Ticks / 10000;
-                LogHelper.Log(LogLevel.Debug, "failed to checke records from " + deviceName + " cost time: " + (end_time - start_time));
+                axCZKEM1.OnAttTransactionEx -= new zkemkeeper._IZKEMEvents_OnAttTransactionExEventHandler(axCZKEM1_OnAttTransactionEx);
+                axCZKEM1.Disconnect();
+                LogHelper.Log(LogLevel.Debug, "failed to checke records from " + deviceName + " cost time: " + (end_time - start_time) + ", disconnect the device and retry.");
             }
             //axCZKEM1.EnableDevice(iMachineNumber, true);//enable the device
         }
